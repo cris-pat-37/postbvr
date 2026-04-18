@@ -44,3 +44,13 @@ export const fetchKitchenQueue = async (token) => {
 export const updateKitchenOrderStatus = async (token, orderId, status) => {
   await authApi(token).patch(`/orders/kitchen/${orderId}/status`, { status });
 };
+
+export const createCounterTableOrder = async (token, payload) => {
+  const { data } = await authApi(token).post('/orders/admin/dine-in/table-order', payload);
+  return data;
+};
+
+export const settleTableBill = async (token, tableNumber, paymentMethod) => {
+  const { data } = await authApi(token).patch(`/orders/admin/dine-in/table/${tableNumber}/close`, { paymentMethod });
+  return data;
+};

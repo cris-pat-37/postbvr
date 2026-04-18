@@ -1,3 +1,5 @@
+import { env } from '../config/env.js';
+
 const OPEN_MINUTES = 11 * 60;
 const CLOSE_MINUTES = 23 * 60;
 
@@ -8,6 +10,15 @@ const getIstDate = () => {
 };
 
 export const getScheduleStatus = () => {
+  if (env.localBypassStoreHours) {
+    return {
+      isWithinSchedule: true,
+      opensAt: '11:00 AM',
+      closesAt: '11:00 PM',
+      nextMessage: 'Local testing bypass is active',
+    };
+  }
+
   const ist = getIstDate();
   const totalMinutes = ist.getHours() * 60 + ist.getMinutes();
   const isWithinSchedule = totalMinutes >= OPEN_MINUTES && totalMinutes < CLOSE_MINUTES;

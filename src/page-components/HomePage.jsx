@@ -44,7 +44,7 @@ const faqItems = [
   },
   {
     question: 'How do table orders work inside the restaurant?',
-    answer: 'Guests can scan the table QR, browse the menu, place the order, and track preparation from the same flow.',
+    answer: 'Guests can browse the menu on their phone, then our waiter takes the final table order and sends it to the kitchen from the counter.',
   },
   {
     question: 'What are your opening hours?',
@@ -200,7 +200,7 @@ export default function HomePage() {
             Track Existing Order
           </Link>
         )}
-        <p className="fade-up fade-delay-4 hero-note">Scan QR at your table to order - Also available on Pickzy</p>
+        <p className="fade-up fade-delay-4 hero-note">Browse in-restaurant menus, or place outside delivery orders online - Also available on Pickzy</p>
       </section>
 
       <section className="section" id="about">
@@ -218,7 +218,7 @@ export default function HomePage() {
           <div className="service-card">
             <div className="service-icon">{'\u{1F37D}\uFE0F'}</div>
             <h3>Dine-In</h3>
-            <p>Scan table QR and order instantly from your seat.</p>
+            <p>Browse the menu on your phone while our waiter places and updates the table order for you.</p>
           </div>
           <div className="service-card">
             <div className="service-icon">{'\u{1F961}'}</div>

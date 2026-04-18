@@ -145,7 +145,7 @@ export default function StatusPage() {
           <h3>Order Cancelled</h3>
           <div className="reason-text">{order.rejection_reason || 'Order could not be fulfilled'}</div>
           <p className="refund-note">{getRefundMessage(order)}</p>
-          <Link className="back-btn" href="/menu">
+          <Link className="back-btn" href="/menu?mode=outside">
             Back to Menu
           </Link>
         </div>
@@ -179,7 +179,7 @@ export default function StatusPage() {
     <div>
       <nav className="navbar">
         <div className="nav-inner">
-          <Link className="back-link" href="/menu">
+          <Link className="back-link" href="/menu?mode=outside">
             {'<-'} <span>Menu</span>
           </Link>
           <h1 className="page-title">Order Status</h1>
@@ -218,7 +218,7 @@ export default function StatusPage() {
               Find
             </button>
             {!!lookupError && <div className="form-error">{lookupError}</div>}
-            <Link className="lookup-link" href="/menu">
+            <Link className="lookup-link" href="/menu?mode=outside">
               Order More
             </Link>
             {!!orderHistory.length && (
@@ -302,7 +302,7 @@ export default function StatusPage() {
 
             <p className="auto-note">Status updates automatically every 10 seconds</p>
             <div className="center-box">
-              <Link className="btn-gold inline-button" href="/menu">
+              <Link className="btn-gold inline-button" href="/menu?mode=outside">
                 Order More
               </Link>
             </div>

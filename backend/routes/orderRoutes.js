@@ -2,6 +2,7 @@ import express from 'express';
 import Joi from 'joi';
 import {
   createOrder,
+  createCounterTableOrder,
   createAdminDeliveryPerson,
   deleteAdminDeliveryPerson,
   fetchAdminOrders,
@@ -10,6 +11,8 @@ import {
   lookupOrderByPhone,
   patchDeliveryAssignment,
   patchOrderStatus,
+  settleTableBill,
+  createTestOrder,
   verifyPayment,
 } from '../controllers/orderController.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -23,8 +26,8 @@ const itemSchema = Joi.object({
 });
 
 const orderDraftSchema = Joi.object({
-  receipt: Joi.string().required(),
-  orderCode: Joi.string().required(),
+  receipt: Joi.string().allow('', null),
+  orderCode: Joi.string().allow('', null),
   orderType: Joi.string().valid('dine-in', 'delivery').required(),
   customerName: Joi.string().required(),
   customerPhone: Joi.string().pattern(/^\d{10}$/).required(),
@@ -44,6 +47,12 @@ router.post(
   '/create-order',
   validate(orderDraftSchema),
   createOrder,
+);
+
+router.post(
+  '/test-checkout',
+  validate(orderDraftSchema),
+  createTestOrder,
 );
 
 router.post(
@@ -74,6 +83,37 @@ router.get(
   fetchOrderById,
 );
 router.get('/admin/all', requireAuth('owner'), fetchAdminOrders);
+router.post(
+  '/admin/dine-in/table-order',
+  requireAuth('owner'),
+  validate(
+    Joi.object({
+      customerName: Joi.string().allow('', null),
+      customerPhone: Joi.string().allow('', null),
+      tableNumber: Joi.number().integer().min(1).max(16).required(),
+      subtotal: Joi.number().required(),
+      total: Joi.number().required(),
+      items: Joi.array().items(itemSchema).min(1).required(),
+    }),
+  ),
+  createCounterTableOrder,
+);
+router.patch(
+  '/admin/dine-in/table/:tableNumber/close',
+  requireAuth('owner'),
+  validate(
+    Joi.object({
+      tableNumber: Joi.number().integer().min(1).max(16).required(),
+    }),
+    'params',
+  ),
+  validate(
+    Joi.object({
+      paymentMethod: Joi.string().valid('CASH', 'CARD', 'UPI').required(),
+    }),
+  ),
+  settleTableBill,
+);
 router.post(
   '/admin/delivery-people',
   requireAuth('owner'),

@@ -69,6 +69,46 @@ export const createRazorpayOrder = async ({ amount, receipt }) =>
 
 export const fetchRazorpayPayment = async (paymentId) => razorpay.payments.fetch(paymentId);
 
+const getIstDayUtcRange = () => {
+  const now = new Date();
+  const shifted = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth();
+  const date = shifted.getUTCDate();
+
+  const startUtc = new Date(Date.UTC(year, month, date, 0, 0, 0) - 5.5 * 60 * 60 * 1000);
+  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
+
+  return {
+    startUtc: startUtc.toISOString(),
+    endUtc: endUtc.toISOString(),
+  };
+};
+
+export const generateDailyOrderCode = async (offset = 0) => {
+  const { startUtc, endUtc } = getIstDayUtcRange();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('order_code')
+    .gte('created_at', startUtc)
+    .lt('created_at', endUtc);
+
+  raise(error);
+
+  const latestSequence = (data || []).reduce((max, row) => {
+    const match = String(row.order_code || '').match(/^BVR(\d{4})$/i);
+    if (!match) return max;
+    return Math.max(max, Number(match[1]));
+  }, 0);
+
+  return `BVR${String(latestSequence + 1 + Number(offset || 0)).padStart(4, '0')}`;
+};
+
+const isDuplicateOrderCodeError = (error) => {
+  const message = String(error?.message || '');
+  return error?.code === '23505' || message.includes('orders_order_code_key') || message.includes('duplicate key value');
+};
+
 export const verifyPaymentSignature = ({ orderId, paymentId, signature, secret }) => {
   const expected = crypto
     .createHmac('sha256', secret)
@@ -159,6 +199,67 @@ export const persistPaidOrder = async ({
   return attachPaymentMetadata(order);
 };
 
+export const createCounterTableOrder = async ({
+  customerName,
+  customerPhone,
+  tableNumber,
+  subtotal,
+  total,
+  items,
+}) => {
+  const fallbackName = String(customerName || '').trim() || `Walk-in Table ${tableNumber}`;
+  const fallbackPhone = String(customerPhone || '').trim() || '0000000000';
+  let order = null;
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const orderCode = await generateDailyOrderCode(attempt);
+    const { data: nextOrder, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        order_code: orderCode,
+        type: 'dine-in',
+        table_number: String(tableNumber),
+        customer_name: fallbackName,
+        customer_phone: fallbackPhone,
+        subtotal,
+        delivery_charge: 0,
+        total,
+        status: 'IN_KITCHEN',
+        payment_status: 'PENDING',
+      })
+      .select()
+      .single();
+
+    if (!orderError) {
+      order = nextOrder;
+      break;
+    }
+
+    if (!isDuplicateOrderCodeError(orderError)) {
+      raise(orderError);
+    }
+  }
+
+  if (!order) {
+    const error = new Error('Could not allocate a unique order code. Please try again.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const { error: itemsError } = await supabase.from('order_items').insert(
+    items.map((item) => ({
+      order_id: order.id,
+      item_name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+  );
+
+  raise(itemsError);
+
+  return getOrderById(order.id);
+};
+
 export const getOrderByCode = async (orderCode) => {
   const { data, error } = await supabase
     .from('orders')
@@ -202,6 +303,28 @@ export const getAllOrders = async () => {
 
   raise(error);
   return attachPaymentMetadataToList(data || []);
+};
+
+export const closeActiveTableOrders = async (tableNumber) => {
+  const normalizedTable = String(tableNumber);
+  const { data: tableOrders, error: ordersError } = await supabase
+    .from('orders')
+    .select('id, status, payment_status, type, table_number')
+    .eq('type', 'dine-in')
+    .eq('table_number', normalizedTable)
+    .neq('status', 'CANCELLED')
+    .neq('payment_status', 'PAID');
+
+  raise(ordersError);
+
+  for (const order of tableOrders || []) {
+    await updateOrderRecord(order.id, {
+      status: 'COMPLETED',
+      payment_status: 'PAID',
+    });
+  }
+
+  return (tableOrders || []).length;
 };
 
 export const getOrderSummary = async (orderId) => {

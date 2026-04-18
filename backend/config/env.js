@@ -108,4 +108,6 @@ export const env = {
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX || 500),
   authRateLimitWindowMs,
   authRateLimitMax,
+  localTestOrdersEnabled: !((process.env.NODE_ENV || 'development') === 'production') && parseBoolean(process.env.LOCAL_TEST_ORDERS_ENABLED, false),
+  localBypassStoreHours: !((process.env.NODE_ENV || 'development') === 'production') && parseBoolean(process.env.LOCAL_BYPASS_STORE_HOURS, false),
 };

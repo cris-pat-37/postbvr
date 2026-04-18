@@ -192,6 +192,11 @@ h1, h2, h3, h4 { font-family: 'Playfair Display', serif; margin: 0; }
 .card-price { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
 .add-btn, .qty-row { width: 100%; margin-top: auto; justify-content: center; }
 .add-btn, .act-ready, .act-confirm { background: linear-gradient(135deg, #d4a017, #f5c842); color: #0a0500; border: 0; }
+.act-secondary {
+  background: rgba(212,160,23,.12);
+  color: var(--bright-gold);
+  border: 1px solid rgba(212,160,23,.28);
+}
 .qty-row, .qty-wrap, .toggle-wrap, .owner-tabs { display: flex; overflow: hidden; }
 .qty-row, .qty-wrap { align-items: center; border: 1px solid var(--gold); }
 .qty-row { min-height: 50px; }
