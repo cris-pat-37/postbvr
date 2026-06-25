@@ -309,6 +309,22 @@ export default function OwnerPage() {
   };
 
   const handlePrintKot = async (order) => {
+    if (process.env.NEXT_PUBLIC_QZ_ENABLED === 'true') {
+      showToast('Sending KOT to QZ printer...', 'info');
+      try {
+        const { printKot } = await import('../utils/qzTrayPrint.js');
+        const res = await printKot(order);
+        if (res.ok) {
+          showToast(`KOT sent to printer: ${res.kitchenPrinter.host || res.kitchenPrinter}`);
+          return true;
+        } else {
+          showToast(`QZ KOT print failed: ${res.reason}. Falling back to browser print...`, 'warning');
+        }
+      } catch (err) {
+        showToast(`QZ error: ${err.message}. Falling back to browser print...`, 'warning');
+      }
+    }
+
     const printOpened = printKotSlip(order);
     if (!printOpened) {
       showToast('Could not open KOT print window. Please check pop-up permission.', 'error');
@@ -319,6 +335,22 @@ export default function OwnerPage() {
   };
 
   const handlePrintBill = async (order) => {
+    if (process.env.NEXT_PUBLIC_QZ_ENABLED === 'true') {
+      showToast('Sending Bill to QZ printer...', 'info');
+      try {
+        const { printBill } = await import('../utils/qzTrayPrint.js');
+        const res = await printBill(order);
+        if (res.ok) {
+          showToast(`Bill sent to printer: ${res.counterPrinter.host || res.counterPrinter}`);
+          return true;
+        } else {
+          showToast(`QZ Bill print failed: ${res.reason}. Falling back to browser print...`, 'warning');
+        }
+      } catch (err) {
+        showToast(`QZ error: ${err.message}. Falling back to browser print...`, 'warning');
+      }
+    }
+
     const printOpened = printBillSlip(order);
     if (!printOpened) {
       showToast('Could not open bill print window. Please check pop-up permission.', 'error');

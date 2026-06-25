@@ -148,12 +148,28 @@ const buildBillPayload = (order) => {
 };
 
 const getQz = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('Window is not defined. QZ Tray can only be loaded in the browser.');
+  }
+
+  if (window.qz) {
+    return window.qz;
+  }
+
   if (!qzModulePromise) {
     qzModulePromise = new Promise((resolve, reject) => {
-      let attempts = 0;
+      // Check if script is already present in document
+      let script = document.querySelector('script[src="/qz-tray.js"]');
+      if (!script) {
+        script = document.createElement('script');
+        script.src = '/qz-tray.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
 
+      let attempts = 0;
       const check = () => {
-        if (typeof window !== 'undefined' && window.qz) {
+        if (window.qz) {
           resolve(window.qz);
           return;
         }
@@ -217,6 +233,10 @@ const ensureConnected = async (qz) => {
 
 const resolvePrinterName = async (qz, preferredName) => {
   if (preferredName) {
+    const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (ipRegex.test(preferredName)) {
+      return { host: preferredName, port: 9100 };
+    }
     return qz.printers.find(preferredName);
   }
 
@@ -228,6 +248,58 @@ const createConfig = (qz, printer) =>
     copies: 1,
     forceRaw: true,
   });
+
+export const printKot = async (order) => {
+  if (typeof window === 'undefined' || !order || !QZ_ENABLED) {
+    return { ok: false, code: 'disabled', reason: 'QZ printing is disabled.' };
+  }
+
+  try {
+    const qz = await getQz();
+    await ensureConnected(qz);
+
+    const kitchenPrinter = await resolvePrinterName(qz, KITCHEN_PRINTER_NAME || COUNTER_PRINTER_NAME);
+    if (!kitchenPrinter) {
+      throw new Error('No kitchen printer was found through QZ Tray.');
+    }
+
+    await qz.print(createConfig(qz, kitchenPrinter), buildKotPayload(order));
+
+    return {
+      ok: true,
+      kitchenPrinter,
+    };
+  } catch (error) {
+    const message = error?.message || 'QZ Tray KOT printing failed.';
+    return { ok: false, reason: message };
+  }
+};
+
+export const printBill = async (order) => {
+  if (typeof window === 'undefined' || !order || !QZ_ENABLED) {
+    return { ok: false, code: 'disabled', reason: 'QZ printing is disabled.' };
+  }
+
+  try {
+    const qz = await getQz();
+    await ensureConnected(qz);
+
+    const counterPrinter = await resolvePrinterName(qz, COUNTER_PRINTER_NAME || KITCHEN_PRINTER_NAME);
+    if (!counterPrinter) {
+      throw new Error('No counter printer was found through QZ Tray.');
+    }
+
+    await qz.print(createConfig(qz, counterPrinter), buildBillPayload(order));
+
+    return {
+      ok: true,
+      counterPrinter,
+    };
+  } catch (error) {
+    const message = error?.message || 'QZ Tray Bill printing failed.';
+    return { ok: false, reason: message };
+  }
+};
 
 export const printKotAndBill = async (order) => {
   if (typeof window === 'undefined' || !order || !QZ_ENABLED) {
